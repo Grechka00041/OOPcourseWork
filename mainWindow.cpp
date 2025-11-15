@@ -102,8 +102,8 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *passLayout = new QHBoxLayout();
     passLayout->addWidget(new QLabel("Кол-во пассажиров:", this));
     m_passengerSpin = new QSpinBox(this);
-    m_passengerSpin->setRange(1, 20);
-    m_passengerSpin->setValue(3);
+    m_passengerSpin->setRange(1, m_capacitySpin->value()); // ← Вот здесь!
+    m_passengerSpin->setValue(qMin(3, m_capacitySpin->value()));
     passLayout->addWidget(m_passengerSpin);
     callLayout->addLayout(passLayout);
 
@@ -172,8 +172,13 @@ void MainWindow::onApply() {
         m_floorsSpin->value(),
         m_capacitySpin->value()
     );
+
+    // Обновляем максимум для подъездов
     m_callEntrance->setRange(1, m_entrancesSpin->value());
-    updateFloorCheckboxes(); // Обновить чекбоксы под новое число этажей
+
+    // 🔸 Обновляем максимум для пассажиров — чтобы нельзя было выбрать больше грузоподъёмности
+    m_passengerSpin->setRange(1, m_capacitySpin->value());
+
     QMessageBox::information(this, "Параметры", "Применены новые параметры.");
 }
 
