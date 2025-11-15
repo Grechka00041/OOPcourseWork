@@ -185,7 +185,10 @@ void MainWindow::updateFloorCheckboxes() {
         delete child;
     }
     m_floorBoxes.clear();
+
+    // +++ ИСПОЛЬЗОВАТЬ КОЛИЧЕСТВО ЭТАЖЕЙ ИЗ СИСТЕМЫ, А НЕ ИЗ SPINBOX +++
     const int floors = m_system->totalFloors();
+    // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     const int cols = 5; // Максимум 5 чекбоксов в строке
 
     for (int i = 0; i < floors; ++i) {
