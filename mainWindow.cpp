@@ -85,7 +85,7 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *entranceCallLayout = new QHBoxLayout();
     entranceCallLayout->addWidget(new QLabel("Выбор подъезда:", this));
     m_callEntrance = new QSpinBox(this);
-    m_callEntrance->setRange(1, 10);
+    m_callEntrance->setRange(1, m_callEntrance->value());
     m_callEntrance->setValue(1);
     entranceCallLayout->addWidget(m_callEntrance);
     callLayout->addLayout(entranceCallLayout);
