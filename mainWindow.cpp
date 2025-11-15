@@ -151,7 +151,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_upButton, &QPushButton::clicked, this, &MainWindow::onUp);
     connect(m_downButton, &QPushButton::clicked, this, &MainWindow::onDown);
     connect(m_system, &ElevatorSystem::elevatorStateChanged, this, &MainWindow::updateDisplay);
-    connect(m_floorsSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::updateFloorCheckboxes);
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, [this]() {
@@ -167,17 +166,19 @@ MainWindow::MainWindow(QWidget *parent)
 }
 
 MainWindow::~MainWindow() = default;
-
 void MainWindow::onApply() {
-    m_system->configure(m_entrancesSpin->value(), m_floorsSpin->value(), m_capacitySpin->value());
+    m_system->configure(
+        m_entrancesSpin->value(),
+        m_floorsSpin->value(),
+        m_capacitySpin->value()
+    );
     m_callEntrance->setRange(1, m_entrancesSpin->value());
-    m_passengerSpin->setRange(1, m_capacitySpin->value());
-    m_passengerSpin->setValue(qMin(m_passengerSpin->value(), m_capacitySpin->value()));
-    updateFloorCheckboxes();
+    updateFloorCheckboxes(); // Обновить чекбоксы под новое число этажей
     QMessageBox::information(this, "Параметры", "Применены новые параметры.");
 }
 
 void MainWindow::updateFloorCheckboxes() {
+    // Очистка старых чекбоксов
     QLayoutItem *child;
     while ((child = m_floorsLayout->takeAt(0)) != nullptr) {
         delete child->widget();
@@ -185,8 +186,9 @@ void MainWindow::updateFloorCheckboxes() {
     }
     m_floorBoxes.clear();
 
-    int floors = m_floorsSpin->value();
-    const int cols = 5;
+    const int floors = m_system->totalFloors();
+    const int cols = 5; // Максимум 5 чекбоксов в строке
+
     for (int i = 0; i < floors; ++i) {
         QCheckBox *cb = new QCheckBox(QString::number(i + 1), this);
         m_floorBoxes.append(cb);
