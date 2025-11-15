@@ -39,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *floorsLayout = new QHBoxLayout();
     floorsLayout->addWidget(new QLabel("Количество этажей:", this));
     m_floorsSpin = new QSpinBox(this);
-    m_floorsSpin->setRange(2, 20);
+    m_floorsSpin->setRange(2, 100);
     m_floorsSpin->setValue(9);
     floorsLayout->addWidget(m_floorsSpin);
     paramLayout->addLayout(floorsLayout);
@@ -150,10 +150,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(m_system, &ElevatorSystem::elevatorStateChanged, this, &MainWindow::updateDisplay);
 
-    // Обновление чекбоксов при изменении числа этажей
-    connect(m_floorsSpin, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::updateFloorCheckboxes);
-
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, [this]() {
         Elevator *e = m_system->getElevator(m_callEntrance->value());
@@ -189,8 +185,7 @@ void MainWindow::updateFloorCheckboxes() {
         delete child;
     }
     m_floorBoxes.clear();
-
-    const int floors = m_floorsSpin->value();
+    const int floors = m_system->totalFloors();
     const int cols = 5; // Максимум 5 чекбоксов в строке
 
     for (int i = 0; i < floors; ++i) {
