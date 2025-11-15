@@ -3,20 +3,24 @@
 
 #include <QMainWindow>
 #include <QVector>
-#include "elevatorSystem.h"
+#include <QCheckBox>
 
-class QLabel;
+class ElevatorSystem;
+class QVBoxLayout;
+class QHBoxLayout;
+class QGridLayout;
 class QSpinBox;
-class QCheckBox;
 class QPushButton;
+class QLabel;
+class QWidget;
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow() override;
 
 private slots:
     void onApply();
@@ -24,30 +28,33 @@ private slots:
     void onUp();
     void onDown();
     void updateDisplay();
+    void updateFloorCheckboxes();
 
 private:
-    // Верхняя панель — параметры
+    ElevatorSystem *m_system;
+    QTimer *m_timer;
+
+    // Параметры
     QSpinBox *m_entrancesSpin;
     QSpinBox *m_floorsSpin;
     QSpinBox *m_capacitySpin;
     QPushButton *m_applyButton;
 
-    // Средняя панель — вызов
+    // Управление
     QSpinBox *m_callEntrance;
     QVector<QCheckBox*> m_floorBoxes;
+    QWidget *m_floorsContainer;
+    QLayout *m_floorsLayout; // может быть QGridLayout или QVBoxLayout
     QPushButton *m_upButton;
     QPushButton *m_downButton;
     QSpinBox *m_passengerSpin;
     QPushButton *m_callButton;
 
-    // Нижняя панель — отображение
+    // Отображение
     QLabel *m_stateLabel;
     QLabel *m_floorLabel;
     QLabel *m_directionLabel;
     QLabel *m_passengerCountLabel;
-
-    ElevatorSystem *m_system;
-    QTimer *m_timer;
 };
 
 #endif // MAINWINDOW_H

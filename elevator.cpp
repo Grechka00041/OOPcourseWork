@@ -14,7 +14,7 @@ Elevator::Elevator(int maxCapacity, int totalFloors, QObject *parent)
 }
 
 int Elevator::currentFloor() const { return m_currentFloor; }
-QString Elevator::direction() const { 
+QString Elevator::direction() const {
     if (m_direction == "up") return "вверх";
     if (m_direction == "down") return "вниз";
     return "остановлен";
