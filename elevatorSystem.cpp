@@ -32,7 +32,6 @@ void ElevatorSystem::callElevator(int entrance, int floor, int passengers, const
     Elevator *e = m_elevators[entrance - 1];
     e->callToFloor(floor, passengers, direction);
 }
-
 Elevator* ElevatorSystem::getElevator(int entrance) const {
     if (entrance < 1 || entrance > m_entrances) return nullptr;
     return m_elevators[entrance - 1];

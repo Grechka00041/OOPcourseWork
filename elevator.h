@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QVector>
+#include <QMap>
 
 class Elevator : public QObject
 {
@@ -19,7 +20,7 @@ public:
     void reset();
 
     void callToFloor(int floor, int passengers, const QString &direction);
-    void setDestinationFloors(const QVector<int> &floors);
+    void setDestinationFloors(const QMap<int, int> &floorPassengers);
     void setDirection(const QString &dir);
     void moveStep();
 
@@ -34,6 +35,7 @@ private:
     int m_passengerCount;
     bool m_isMoving;
     QVector<int> m_destinationFloors;
+    QMap<int, int> m_floorPassengers;
 };
 
 #endif // ELEVATOR_H

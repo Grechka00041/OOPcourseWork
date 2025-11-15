@@ -50,21 +50,26 @@ void Elevator::callToFloor(int floor, int passengers, const QString &direction) 
     emit stateChanged();
 }
 
-void Elevator::setDestinationFloors(const QVector<int> &floors) {
+void Elevator::setDestinationFloors(const QMap<int, int> &floorPassengers) {
     if (m_passengerCount == 0 || m_isMoving)
         return;
 
     m_destinationFloors.clear();
-    for (int f : floors) {
-        if (f >= 1 && f <= m_totalFloors && f != m_currentFloor) {
-            m_destinationFloors.append(f);
+    m_floorPassengers.clear();
+
+    // Заполняем этажи назначения и количество пассажиров
+    for (auto it = floorPassengers.begin(); it != floorPassengers.end(); ++it) {
+        int floor = it.key();
+        int passengers = it.value();
+
+        if (floor >= 1 && floor <= m_totalFloors && floor != m_currentFloor && passengers > 0) {
+            m_destinationFloors.append(floor);
+            m_floorPassengers[floor] = passengers;
         }
     }
+
+    // Сортируем этажи
     std::sort(m_destinationFloors.begin(), m_destinationFloors.end());
-    m_destinationFloors.erase(
-        std::unique(m_destinationFloors.begin(), m_destinationFloors.end()),
-        m_destinationFloors.end()
-    );
 
     if (!m_destinationFloors.isEmpty()) {
         m_isMoving = true;
@@ -72,7 +77,6 @@ void Elevator::setDestinationFloors(const QVector<int> &floors) {
     }
     emit stateChanged();
 }
-
 void Elevator::setDirection(const QString &dir) {
     if (dir == "вверх") m_direction = "up";
     else if (dir == "вниз") m_direction = "down";
@@ -83,6 +87,7 @@ void Elevator::moveStep() {
     if (!m_isMoving || m_destinationFloors.isEmpty())
         return;
 
+    // Двигаемся
     if (m_direction == "up" && m_currentFloor < m_totalFloors) {
         m_currentFloor++;
     } else if (m_direction == "down" && m_currentFloor > 1) {
@@ -91,33 +96,52 @@ void Elevator::moveStep() {
         // Достиг границы — все выходят
         m_passengerCount = 0;
         m_destinationFloors.clear();
+        m_floorPassengers.clear();
         m_isMoving = false;
         m_direction = "idle";
         emit stateChanged();
         return;
     }
 
-    // === ПРАВИЛО: на 1-м и последнем этаже ВСЕ выходят ===
+    // Проверка: выходят ли пассажиры на текущем этаже
+    if (m_floorPassengers.contains(m_currentFloor)) {
+        int exitingPassengers = m_floorPassengers[m_currentFloor];
+        m_passengerCount = std::max(0, m_passengerCount - exitingPassengers);
+        m_floorPassengers.remove(m_currentFloor);
+
+        // Удаляем этаж из destinationFloors
+        m_destinationFloors.removeAll(m_currentFloor);
+    }
+
+    // ПРАВИЛО: на 1-м и последнем этаже ВСЕ выходят
     if (m_currentFloor == 1 || m_currentFloor == m_totalFloors) {
         m_passengerCount = 0;
         m_destinationFloors.clear();
+        m_floorPassengers.clear();
         m_isMoving = false;
         m_direction = "idle";
         emit stateChanged();
         return;
     }
 
-    // Проверка: выходит ли кто-то
-    auto it = std::find(m_destinationFloors.begin(), m_destinationFloors.end(), m_currentFloor);
-    if (it != m_destinationFloors.end()) {
-        m_destinationFloors.erase(it);
-        m_passengerCount = std::max(0, m_passengerCount - 1);
+    // Остановка, если некуда ехать или нет пассажиров
+    if (m_destinationFloors.isEmpty() || m_passengerCount == 0) {
+        m_isMoving = false;
+        if (m_passengerCount == 0) {
+            m_direction = "idle";
+            m_floorPassengers.clear();
+        }
+        emit stateChanged();
+        return;
     }
 
-    // Остановка, если некуда ехать
-    if (m_destinationFloors.isEmpty()) {
-        m_isMoving = false;
-        if (m_passengerCount == 0) m_direction = "idle";
+    // Обновляем направление если нужно
+    if (!m_destinationFloors.isEmpty()) {
+        if (m_direction == "up" && m_currentFloor > m_destinationFloors.last()) {
+            m_direction = "down";
+        } else if (m_direction == "down" && m_currentFloor < m_destinationFloors.first()) {
+            m_direction = "up";
+        }
     }
 
     emit stateChanged();
