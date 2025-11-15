@@ -3,7 +3,8 @@
 
 #include <QObject>
 #include <QVector>
-#include "elevator.h"
+
+class Elevator;
 
 class ElevatorSystem : public QObject
 {
@@ -12,8 +13,8 @@ class ElevatorSystem : public QObject
 public:
     explicit ElevatorSystem(QObject *parent = nullptr);
     void configure(int entrances, int floors, int capacity);
-    void callElevator(int entrance, int floor, int passengers);
 
+    void callElevator(int entrance, int floor, int passengers, const QString &direction);
     Elevator* getElevator(int entrance) const;
 
     int totalEntrances() const;
@@ -21,8 +22,8 @@ public:
     int capacity() const;
 
     signals:
-        void configurationChanged();
-    void elevatorStateChanged();
+        void elevatorStateChanged();
+    void configurationChanged();
 
 private:
     int m_entrances;

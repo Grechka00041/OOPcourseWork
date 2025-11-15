@@ -1,5 +1,6 @@
 #include "mainWindow.h"
-#include "elevatorSystem.h" // Убедитесь, что этот заголовок у вас есть
+#include "elevatorSystem.h"
+#include "elevator.h" // <-- ВАЖНО: без этого будет ошибка "incomplete type"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -69,23 +70,20 @@ MainWindow::MainWindow(QWidget *parent)
     entranceCallLayout->addWidget(m_callEntrance);
     callLayout->addLayout(entranceCallLayout);
 
-    callLayout->addWidget(new QLabel("Этажи вызова:", this));
+    callLayout->addWidget(new QLabel("Этажи:", this));
 
-    // Динамический контейнер для чекбоксов этажей
     m_floorsContainer = new QWidget(this);
     m_floorsLayout = new QGridLayout(m_floorsContainer);
     m_floorsLayout->setSpacing(4);
     m_floorsLayout->setContentsMargins(0, 0, 0, 0);
     callLayout->addWidget(m_floorsContainer);
 
-    // Направление движения — кнопки как переключатели
     QHBoxLayout *dirLayout = new QHBoxLayout();
     dirLayout->addWidget(new QLabel("Направление движения:", this));
     m_upButton = new QPushButton("Вверх", this);
     m_downButton = new QPushButton("Вниз", this);
     m_upButton->setCheckable(true);
     m_downButton->setCheckable(true);
-    // Связываем как radio-кнопки
     connect(m_upButton, &QPushButton::clicked, this, [this](){
         m_upButton->setChecked(true);
         m_downButton->setChecked(false);
@@ -98,17 +96,21 @@ MainWindow::MainWindow(QWidget *parent)
     dirLayout->addWidget(m_downButton);
     callLayout->addLayout(dirLayout);
 
-    // Количество пассажиров
     QHBoxLayout *passLayout = new QHBoxLayout();
     passLayout->addWidget(new QLabel("Кол-во пассажиров:", this));
     m_passengerSpin = new QSpinBox(this);
-    m_passengerSpin->setRange(1, m_capacitySpin->value()); // ← Вот здесь!
+    m_passengerSpin->setRange(1, m_capacitySpin->value());
     m_passengerSpin->setValue(qMin(3, m_capacitySpin->value()));
     passLayout->addWidget(m_passengerSpin);
     callLayout->addLayout(passLayout);
 
     m_callButton = new QPushButton("Вызвать лифт", this);
     callLayout->addWidget(m_callButton);
+
+    m_setDestinationsButton = new QPushButton("Указать этажи назначения", this);
+    m_setDestinationsButton->setEnabled(false);
+    callLayout->addWidget(m_setDestinationsButton);
+
     mainLayout->addWidget(callGroup);
 
     // ========== ПРАВАЯ КОЛОНКА: Окно отображения ==========
@@ -145,14 +147,11 @@ MainWindow::MainWindow(QWidget *parent)
     // ========== Подключение сигналов ==========
     connect(m_applyButton, &QPushButton::clicked, this, &MainWindow::onApply);
     connect(m_callButton, &QPushButton::clicked, this, &MainWindow::onCall);
+    connect(m_setDestinationsButton, &QPushButton::clicked, this, &MainWindow::onSetDestinations);
     connect(m_upButton, &QPushButton::clicked, this, &MainWindow::onUp);
     connect(m_downButton, &QPushButton::clicked, this, &MainWindow::onDown);
-
     connect(m_system, &ElevatorSystem::elevatorStateChanged, this, &MainWindow::updateDisplay);
-
-    // Обновление чекбоксов при изменении числа этажей
-    connect(m_floorsSpin, QOverload<int>::of(&QSpinBox::valueChanged),
-            this, &MainWindow::updateFloorCheckboxes);
+    connect(m_floorsSpin, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::updateFloorCheckboxes);
 
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, [this]() {
@@ -162,7 +161,6 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
 
-    // Инициализация чекбоксов
     updateFloorCheckboxes();
     updateDisplay();
     setWindowTitle("Имитация лифта");
@@ -171,23 +169,15 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow() = default;
 
 void MainWindow::onApply() {
-    m_system->configure(
-        m_entrancesSpin->value(),
-        m_floorsSpin->value(),
-        m_capacitySpin->value()
-    );
-
-    // Обновляем максимум для подъездов
+    m_system->configure(m_entrancesSpin->value(), m_floorsSpin->value(), m_capacitySpin->value());
     m_callEntrance->setRange(1, m_entrancesSpin->value());
-
-    // 🔸 Обновляем максимум для пассажиров — чтобы нельзя было выбрать больше грузоподъёмности
     m_passengerSpin->setRange(1, m_capacitySpin->value());
-
+    m_passengerSpin->setValue(qMin(m_passengerSpin->value(), m_capacitySpin->value()));
+    updateFloorCheckboxes();
     QMessageBox::information(this, "Параметры", "Применены новые параметры.");
 }
 
 void MainWindow::updateFloorCheckboxes() {
-    // Очистка старых чекбоксов
     QLayoutItem *child;
     while ((child = m_floorsLayout->takeAt(0)) != nullptr) {
         delete child->widget();
@@ -195,9 +185,8 @@ void MainWindow::updateFloorCheckboxes() {
     }
     m_floorBoxes.clear();
 
-    const int floors = m_floorsSpin->value();
-    const int cols = 5; // Максимум 5 чекбоксов в строке
-
+    int floors = m_floorsSpin->value();
+    const int cols = 5;
     for (int i = 0; i < floors; ++i) {
         QCheckBox *cb = new QCheckBox(QString::number(i + 1), this);
         m_floorBoxes.append(cb);
@@ -209,56 +198,65 @@ void MainWindow::onCall() {
     int entrance = m_callEntrance->value();
     int passengers = m_passengerSpin->value();
 
-    // Собираем выбранные этажи
     QList<int> selectedFloors;
     for (int i = 0; i < m_floorBoxes.size(); ++i) {
         if (m_floorBoxes[i]->isChecked()) {
-            selectedFloors.append(i + 1); // этажи с 1
+            selectedFloors.append(i + 1);
         }
     }
-
     if (selectedFloors.isEmpty()) {
-        QMessageBox::warning(this, "Ошибка", "Выберите хотя бы один этаж!");
+        QMessageBox::warning(this, "Ошибка", "Выберите этаж вызова!");
         return;
     }
-
     if (passengers > m_system->capacity()) {
-        QMessageBox::warning(this, "Ошибка", "Слишком много пассажиров!");
+        QMessageBox::warning(this, "Ошибка", "Превышена грузоподъёмность!");
+        return;
+    }
+    QString dir;
+    if (m_upButton->isChecked()) dir = "вверх";
+    else if (m_downButton->isChecked()) dir = "вниз";
+    else {
+        QMessageBox::warning(this, "Ошибка", "Укажите направление!");
         return;
     }
 
-    // Направление из кнопок
-    QString direction;
-    if (m_upButton->isChecked()) {
-        direction = "вверх";
-    } else if (m_downButton->isChecked()) {
-        direction = "вниз";
-    } else {
-        QMessageBox::warning(this, "Ошибка", "Выберите направление движения!");
-        return;
-    }
-
-    // Берём первый выбранный этаж как точку вызова (упрощённая модель)
     int targetFloor = selectedFloors.first();
+    m_system->callElevator(entrance, targetFloor, passengers, dir);
 
-    m_system->callElevator(entrance, targetFloor, passengers);
-    Elevator *e = m_system->getElevator(entrance);
-    if (e) {
-        e->setDirection(direction);
+    m_setDestinationsButton->setEnabled(true);
+    updateDisplay();
+}
+
+void MainWindow::onSetDestinations() {
+    Elevator *e = m_system->getElevator(m_callEntrance->value());
+    if (!e || e->passengerCount() == 0) return;
+
+    QVector<int> dests;
+    for (int i = 0; i < m_floorBoxes.size(); ++i) {
+        if (m_floorBoxes[i]->isChecked()) {
+            int f = i + 1;
+            if (f != e->currentFloor()) {
+                dests.append(f);
+            }
+        }
+    }
+    if (dests.isEmpty()) {
+        QMessageBox::warning(this, "Ошибка", "Укажите хотя бы один этаж назначения!");
+        return;
     }
 
-    m_timer->start(1000);
+    e->setDestinationFloors(dests);
+    m_setDestinationsButton->setEnabled(false);
+    if (!m_timer->isActive()) m_timer->start(1000);
     updateDisplay();
 }
 
 void MainWindow::onUp() {
-    // Переключение уже обработано в лямбда-соединении
     Elevator *e = m_system->getElevator(m_callEntrance->value());
     if (e) e->setDirection("вверх");
 }
 
 void MainWindow::onDown() {
-    // Переключение уже обработано в лямбда-соединении
     Elevator *e = m_system->getElevator(m_callEntrance->value());
     if (e) e->setDirection("вниз");
 }

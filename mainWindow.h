@@ -6,12 +6,11 @@
 #include <QCheckBox>
 
 class ElevatorSystem;
-class QVBoxLayout;
-class QHBoxLayout;
-class QGridLayout;
+class QTimer;
 class QSpinBox;
 class QPushButton;
 class QLabel;
+class QLayout;
 class QWidget;
 
 class MainWindow : public QMainWindow
@@ -25,6 +24,7 @@ public:
 private slots:
     void onApply();
     void onCall();
+    void onSetDestinations();
     void onUp();
     void onDown();
     void updateDisplay();
@@ -44,11 +44,12 @@ private:
     QSpinBox *m_callEntrance;
     QVector<QCheckBox*> m_floorBoxes;
     QWidget *m_floorsContainer;
-    QLayout *m_floorsLayout; // может быть QGridLayout или QVBoxLayout
+    QLayout *m_floorsLayout;
     QPushButton *m_upButton;
     QPushButton *m_downButton;
     QSpinBox *m_passengerSpin;
     QPushButton *m_callButton;
+    QPushButton *m_setDestinationsButton;
 
     // Отображение
     QLabel *m_stateLabel;
