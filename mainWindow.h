@@ -69,6 +69,7 @@ private:
     QLabel *m_totalPassengersLabel;
 
     std::map<int, int> m_floorPassengersMap;
+    QMap<int, QMap<int, int>> m_elevatorMemory;
 };
 
 #endif // MAINWINDOW_H

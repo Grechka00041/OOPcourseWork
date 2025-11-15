@@ -49,6 +49,9 @@ MainWindow::MainWindow(QWidget *parent)
     QHBoxLayout *entranceLayout = new QHBoxLayout();
     entranceLayout->addWidget(new QLabel("Число подъездов:", this));
     m_entrancesSpin = new QSpinBox(this);
+    for (int i = 1; i <= m_entrancesSpin->value(); ++i) {
+        m_elevatorMemory[i] = QMap<int, int>();
+    }
     m_entrancesSpin->setRange(1, 10);
     m_entrancesSpin->setValue(2);
     entranceLayout->addWidget(m_entrancesSpin);
@@ -163,6 +166,8 @@ MainWindow::MainWindow(QWidget *parent)
     // ========== Подключение сигналов ==========
     connect(m_applyButton, &QPushButton::clicked, this, &MainWindow::onApply);
     connect(m_callButton, &QPushButton::clicked, this, &MainWindow::onCall);
+    connect(m_callEntrance, QOverload<int>::of(&QSpinBox::valueChanged),
+        this, &MainWindow::updateDisplay);
     connect(m_setDestinationsButton, &QPushButton::clicked, this, &MainWindow::onSetDestinations);
     connect(m_upButton, &QPushButton::clicked, this, &MainWindow::onUp);
     connect(m_downButton, &QPushButton::clicked, this, &MainWindow::onDown);
@@ -189,6 +194,13 @@ void MainWindow::onApply() {
         m_capacitySpin->value()
     );
     m_callEntrance->setRange(1, m_entrancesSpin->value());
+
+    // Обновляем память лифтов
+    m_elevatorMemory.clear();
+    for (int i = 1; i <= m_entrancesSpin->value(); ++i) {
+        m_elevatorMemory[i] = QMap<int, int>();
+    }
+
     updateFloorCheckboxes();
     QMessageBox::information(this, "Параметры", "Применены новые параметры.");
 }
@@ -379,20 +391,13 @@ void MainWindow::onSetDestinations() {
         return;
     }
 
-    // Устанавливаем этажи назначения С КОЛИЧЕСТВОМ ПАССАЖИРОВ
+    // СОХРАНЯЕМ состояние для текущего подъезда
+    int currentEntrance = m_callEntrance->value();
+    m_elevatorMemory[currentEntrance] = floorPassengers;
+
+    // Устанавливаем этажи назначения
     e->setDestinationFloors(floorPassengers);
     m_setDestinationsButton->setEnabled(false);
-
-    // Сбрасываем интерфейс
-    for (int i = 0; i < m_floorBoxes.size(); ++i) {
-        if (m_floorBoxes[i]) {
-            m_floorBoxes[i]->setChecked(false);
-        }
-        if (m_passengerSpins[i]) {
-            m_passengerSpins[i]->setValue(0);
-            m_passengerSpins[i]->setEnabled(false);
-        }
-    }
 
     if (!m_timer->isActive()) m_timer->start(1000);
     updateDisplay();
@@ -416,4 +421,35 @@ void MainWindow::updateDisplay() {
     m_floorLabel->setText(QString::number(e->currentFloor()));
     m_directionLabel->setText(e->direction());
     m_passengerCountLabel->setText(QString::number(e->passengerCount()));
+
+    // Восстанавливаем сохраненные этажи назначения для текущего подъезда
+    int currentEntrance = m_callEntrance->value();
+    if (m_elevatorMemory.contains(currentEntrance)) {
+        QMap<int, int> savedFloors = m_elevatorMemory[currentEntrance];
+
+        // Сбрасываем все чекбоксы
+        for (int i = 0; i < m_floorBoxes.size(); ++i) {
+            if (m_floorBoxes[i]) {
+                m_floorBoxes[i]->setChecked(false);
+            }
+            if (m_passengerSpins[i]) {
+                m_passengerSpins[i]->setValue(0);
+                m_passengerSpins[i]->setEnabled(false);
+            }
+        }
+
+        // Восстанавливаем сохраненные этажи
+        for (auto it = savedFloors.begin(); it != savedFloors.end(); ++it) {
+            int floor = it.key();
+            int passengers = it.value();
+
+            if (floor - 1 < m_floorBoxes.size() && m_floorBoxes[floor - 1]) {
+                m_floorBoxes[floor - 1]->setChecked(true);
+                if (floor - 1 < m_passengerSpins.size() && m_passengerSpins[floor - 1]) {
+                    m_passengerSpins[floor - 1]->setValue(passengers);
+                    m_passengerSpins[floor - 1]->setEnabled(true);
+                }
+            }
+        }
+    }
 }

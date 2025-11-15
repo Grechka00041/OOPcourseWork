@@ -18,7 +18,7 @@ public:
     bool isMoving() const;
     bool isIdle() const;
     void reset();
-
+    QMap<int, int> getFloorPassengers() const { return m_floorPassengers; }
     void callToFloor(int floor, int passengers, const QString &direction);
     void setDestinationFloors(const QMap<int, int> &floorPassengers);
     void setDirection(const QString &dir);
